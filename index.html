@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#090910">
+<meta name="description" content="Shadow Born AI, your personal AI assistant.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Shadow Born AI</title>
+<style>
+:root{--bg:#090910;--panel:#11111b;--panel2:#191927;--line:#29293b;--text:#f4f3ff;--muted:#a4a2bd;--purple:#8b5cf6;--purple2:#6d28d9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;height:100dvh;display:flex;overflow:hidden}
+button,textarea{font:inherit}button{cursor:pointer}
+.sidebar{width:260px;background:#0d0d16;border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:14px;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 5px 16px}.logo{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:radial-gradient(circle at 30% 25%,#c4b5fd,#7c3aed 48%,#24104f);box-shadow:0 0 25px #7c3aed55;font-size:23px}.brand strong{display:block;font-size:15px;letter-spacing:.2px}.brand small{color:var(--muted);font-size:11px}
+.newchat{background:#171724;color:white;border:1px solid #37374b;border-radius:12px;padding:12px;text-align:left}.newchat:hover{border-color:var(--purple)}
+.side-label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#77758f;margin:12px 8px 0}.side-note{font-size:12px;line-height:1.6;color:var(--muted);padding:0 8px}.side-bottom{margin-top:auto;border-top:1px solid var(--line);padding:14px 8px 4px;color:var(--muted);font-size:11px;line-height:1.6}
+.main{min-width:0;flex:1;display:flex;flex-direction:column;position:relative}.topbar{height:66px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--line);background:#0b0b13}.top-title{font-weight:650}.status{font-size:11px;color:#c4b5fd;background:#251742;border:1px solid #4c2c7c;border-radius:30px;padding:6px 10px}
+.mobile-menu{display:none;background:transparent;color:white;border:0;font-size:22px}.install-app{border:1px solid #5b3a91;background:#211435;color:#eee6ff;border-radius:10px;padding:7px 10px;font-size:11px}.install-app[hidden]{display:none}
+.chat{flex:1;overflow-y:auto;padding:30px 18px 18px;scroll-behavior:smooth}.inner{max-width:780px;margin:0 auto}.welcome{text-align:center;padding:8vh 10px 24px}.welcome-logo{font-size:45px;margin-bottom:12px;filter:drop-shadow(0 0 20px #8b5cf6)}.welcome h1{font-size:clamp(28px,5vw,42px);letter-spacing:-1.4px;margin:0 0 12px}.gradient{background:linear-gradient(100deg,#ddd6fe,#a78bfa,#f0abfc);-webkit-background-clip:text;background-clip:text;color:transparent}.welcome p{color:var(--muted);line-height:1.6;margin:0 auto;max-width:480px;font-size:14px}
+.suggestions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:590px;margin:26px auto 0}.suggestion{background:var(--panel);border:1px solid var(--line);border-radius:14px;color:#e8e5ff;text-align:left;padding:14px;font-size:13px;line-height:1.45}.suggestion:hover{border-color:#7c3aed;background:#171326}.suggestion span{display:block;color:var(--muted);font-size:11px;margin-top:5px}
+.messages{display:flex;flex-direction:column;gap:20px;padding-bottom:24px}.message{display:flex;gap:12px;align-items:flex-start}.avatar{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;flex-shrink:0;background:#222235;font-size:15px}.message.user .avatar{background:#4c1d95}.bubble{min-width:0;max-width:calc(100% - 44px);font-size:14px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}.message.user .bubble{background:#171727;border:1px solid #2c2c40;padding:11px 14px;border-radius:4px 15px 15px 15px}.message.assistant .bubble{padding:3px 0}.bubble strong{color:#ddd6fe}.typing{color:var(--muted);font-size:13px}
+.composer-wrap{padding:12px 18px 18px;background:linear-gradient(transparent,#090910 22%)}.composer{max-width:780px;margin:auto;border:1px solid #39384f;background:#151520;border-radius:18px;padding:10px 10px 8px;box-shadow:0 12px 40px #0005}.composer:focus-within{border-color:#7c3aed}.composer textarea{width:100%;background:transparent;border:0;outline:none;color:var(--text);resize:none;min-height:30px;max-height:150px;padding:7px 8px;line-height:1.5;font-size:14px}.composer-row{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 0}.hint{font-size:10px;color:#77758f;padding-left:7px}.send{border:0;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:white;border-radius:11px;width:38px;height:36px;font-size:18px}.send:disabled{opacity:.45;cursor:not-allowed}.disclaimer{text-align:center;color:#77758f;font-size:10px;margin-top:9px}.toast{position:absolute;bottom:105px;left:50%;transform:translateX(-50%);background:#242438;border:1px solid #454560;padding:10px 14px;border-radius:12px;font-size:12px;display:none;max-width:90%;text-align:center}
+@media(max-width:680px){.sidebar{position:absolute;z-index:5;top:0;bottom:0;left:0;transform:translateX(-105%);transition:transform .22s;box-shadow:20px 0 50px #0008}.sidebar.open{transform:translateX(0)}.mobile-menu{display:block}.topbar{padding:0 14px;height:58px}.top-title{font-size:14px}.chat{padding:16px 14px}.welcome{padding-top:6vh}.suggestions{grid-template-columns:1fr}.suggestion{padding:12px}.composer-wrap{padding:8px 10px 12px}.hint{font-size:9px}}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="brand"><div class="logo">◈</div><div><strong>SHADOW BORN AI</strong><small>Your ideas, unlocked.</small></div></div>
+  <button class="newchat" id="newChat">＋ &nbsp; New conversation</button>
+  <div class="side-label">Your assistant</div>
+  <div class="side-note">Ask questions, learn new things, brainstorm ideas, write, plan, or get help with code.</div>
+  <div class="side-bottom">SHADOW BORN AI<br>Version 2.0 · PWA<br><span style="color:#8b5cf6">Built for curious minds.</span><br><br>Your messages are shown in this session. AI replies need a secure connection.</div>
+</aside>
+<main class="main">
+  <header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button class="mobile-menu" id="menu" aria-label="Open menu">☰</button><div class="top-title">Shadow Born <span class="gradient">AI</span></div></div><div style="display:flex;align-items:center;gap:8px"><button id="installApp" class="install-app" hidden>Install app</button><div class="status" id="modeStatus">● Preview mode</div></div></header>
+  <section class="chat" id="chat"><div class="inner">
+    <div class="welcome" id="welcome"><div class="welcome-logo">◈</div><h1>Welcome to <span class="gradient">Shadow Born AI</span></h1><p>Your space to ask boldly, think clearly, and create something new. What shall we explore today?</p>
+      <div class="suggestions">
+        <button class="suggestion" data-prompt="Explain photosynthesis in simple English.">📚 Learn something<span>Clear explanations for any topic</span></button>
+        <button class="suggestion" data-prompt="Give me five creative business ideas I can start on a small budget.">💡 Explore ideas<span>Brainstorm your next big thing</span></button>
+        <button class="suggestion" data-prompt="Help me write a polite message to a friend.">✍️ Write something<span>Messages, essays, and more</span></button>
+        <button class="suggestion" data-prompt="Teach me the basics of HTML with a tiny example.">💻 Build with code<span>Learn programming step by step</span></button>
+      </div>
+    </div>
+    <div class="messages" id="messages"></div>
+  </div></section>
+  <div class="composer-wrap"><div class="composer"><textarea id="prompt" rows="1" placeholder="Message Shadow Born AI..." aria-label="Message Shadow Born AI"></textarea><div class="composer-row"><span class="hint">Enter to send · Shift + Enter for a new line</span><button class="send" id="send" aria-label="Send message">↑</button></div></div><div class="disclaimer">AI can make mistakes. Check important information.</div></div>
+  <div class="toast" id="toast"></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const chat=$('chat'), messages=$('messages'), promptBox=$('prompt'), sendBtn=$('send');
+let history=[];
+function toast(msg){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.style.display='none',3500)}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function addMessage(role,text){$('welcome').style.display='none';const row=document.createElement('div');row.className='message '+role;const avatar=document.createElement('div');avatar.className='avatar';avatar.textContent=role==='user'?'●':'◈';const bubble=document.createElement('div');bubble.className='bubble';bubble.textContent=text;row.append(avatar,bubble);messages.append(row);chat.scrollTop=chat.scrollHeight;return bubble}
+function autoSize(){promptBox.style.height='auto';promptBox.style.height=Math.min(promptBox.scrollHeight,150)+'px'}
+async function sendMessage(text){
+ text=(text||promptBox.value).trim();if(!text||sendBtn.disabled)return;
+ promptBox.value='';autoSize();$('sidebar').classList.remove('open');
+ addMessage('user',text);history.push({role:'user',content:text});sendBtn.disabled=true;
+ const bubble=addMessage('assistant','Thinking…');bubble.className='bubble typing';
+ try{
+   // Connect your secure backend at /api/chat when you deploy the AI.
+   const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
+   if(!response.ok)throw new Error('Backend not connected');
+   const data=await response.json();const answer=data.reply||data.message||data.output;
+   if(!answer)throw new Error('The server returned no answer');
+   bubble.className='bubble';bubble.textContent=answer;history.push({role:'assistant',content:answer});$('modeStatus').textContent='● AI connected';
+ }catch(e){
+   bubble.className='bubble';
+   bubble.textContent='Your chat screen is working, but the AI brain is not connected yet. To get real AI answers, Shadow Born AI needs a secure backend connected to an AI provider. Do not put a private API key inside this HTML file.';
+   toast('Interface ready. AI connection is the next step.');
+   history.pop();
+ }
+ sendBtn.disabled=false;promptBox.focus();chat.scrollTop=chat.scrollHeight;
+}
+sendBtn.addEventListener('click',()=>sendMessage());
+promptBox.addEventListener('input',autoSize);
+promptBox.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
+document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>sendMessage(b.dataset.prompt)));
+$('newChat').addEventListener('click',()=>{history=[];messages.innerHTML='';$('welcome').style.display='block';$('sidebar').classList.remove('open');$('modeStatus').textContent='● Preview mode';promptBox.focus();localStorage.removeItem('shadowBornChatV2')});
+$('menu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
+</script>
+
+<script>
+let installPromptEvent = null;
+const installButton = document.getElementById('installApp');
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  installPromptEvent = event;
+  installButton.hidden = false;
+});
+installButton.addEventListener('click', async () => {
+  if (!installPromptEvent) {
+    toast('To install: open Chrome menu ⋮ and choose Install app or Add to Home screen.');
+    return;
+  }
+  installPromptEvent.prompt();
+  await installPromptEvent.userChoice;
+  installPromptEvent = null;
+  installButton.hidden = true;
+});
+window.addEventListener('appinstalled', () => {
+  installButton.hidden = true;
+  toast('Shadow Born AI was added to your device.');
+});
+function updateNetworkStatus(){
+  const el=document.getElementById('modeStatus');
+  if(!navigator.onLine){el.textContent='● Offline';el.style.color='#fcd34d';}
+  else {el.textContent='● Preview mode';el.style.color='#c4b5fd';}
+}
+window.addEventListener('online',updateNetworkStatus);
+window.addEventListener('offline',updateNetworkStatus);
+updateNetworkStatus();
+</script>
+
+<script>if ("serviceWorker" in navigator && location.protocol.startsWith("http")) { navigator.serviceWorker.register("./sw.js").catch(()=>{}); }</script>
+</body>
+</html>
