@@ -67,7 +67,7 @@ async function sendMessage(text){
  const bubble=addMessage('assistant','Thinking…');bubble.className='bubble typing';
  try{
    // Connect your secure backend at /api/chat when you deploy the AI.
-   const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
+   const response=await fetch('https://shadow-born-ai-api.jeremiahabiola792.workers.dev/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
    if(!response.ok)throw new Error('Backend not connected');
    const data=await response.json();const answer=data.reply||data.message||data.output;
    if(!answer)throw new Error('The server returned no answer');
