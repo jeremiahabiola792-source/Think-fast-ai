@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -56,10 +57,13 @@ button,textarea{font:inherit}button{cursor:pointer}
 const $=id=>document.getElementById(id);
 const chat=$('chat'), messages=$('messages'), promptBox=$('prompt'), sendBtn=$('send');
 let history=[];
+let aiConnected=false;
+let lastAIError=false;
 function toast(msg){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.style.display='none',3500)}
-function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}))}
 function addMessage(role,text){$('welcome').style.display='none';const row=document.createElement('div');row.className='message '+role;const avatar=document.createElement('div');avatar.className='avatar';avatar.textContent=role==='user'?'●':'◈';const bubble=document.createElement('div');bubble.className='bubble';bubble.textContent=text;row.append(avatar,bubble);messages.append(row);chat.scrollTop=chat.scrollHeight;return bubble}
 function autoSize(){promptBox.style.height='auto';promptBox.style.height=Math.min(promptBox.scrollHeight,150)+'px'}
+function updateNetworkStatus(){const el=$('modeStatus');if(!navigator.onLine){el.textContent='● Offline';el.style.color='#fcd34d';}else if(aiConnected){el.textContent='● Groq connected';el.style.color='#a7f3d0';}else if(lastAIError){el.textContent='● AI connection error';el.style.color='#fca5a5';}else{el.textContent='● Online';el.style.color='#c4b5fd';}}
 
 async function sendMessage(text){
   text=(text||promptBox.value).trim();
@@ -77,43 +81,57 @@ async function sendMessage(text){
   bubble.className='bubble typing';
 
   try{
-    const response=await fetch(
-      'https://shadow-born-ai-api.jeremiahabiola792.workers.dev/api/chat',
-      {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({messages:history})
-      }
-    );
+    const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer YOUR_GROQ_API_KEY'
+      },
+      body:JSON.stringify({
+        model:'openai/gpt-oss-120b',
+        messages:history,
+        temperature:0.7
+      })
+    });
 
     let data;
     try{
       data=await response.json();
     }catch{
-      throw new Error('Server returned an invalid response.');
+      throw new Error('Groq returned an unreadable response (HTTP '+response.status+').');
     }
 
     if(!response.ok){
-      throw new Error(data.error||'Backend error: '+response.status);
+      const apiMessage=data?.error?.message||data?.message||'';
+      if(response.status===401||response.status===403){throw new Error('Your Groq API key is invalid or not authorized. Check the key. (HTTP '+response.status+')');}
+      if(response.status===429){throw new Error('Groq rate limit or quota reached. Wait a little or check your Groq account limits. (HTTP 429)');}
+      if(response.status>=500){throw new Error('Groq server is temporarily unavailable. Try again later. (HTTP '+response.status+')');}
+      throw new Error(apiMessage||'Groq API request failed (HTTP '+response.status+').');
     }
 
-    const answer=data.reply||data.message||data.output;
-
-    if(!answer){
-      throw new Error('The server returned no answer.');
-    }
+    const answer=data?.choices?.[0]?.message?.content;
+    if(typeof answer!=='string'||!answer.trim())throw new Error('Groq returned an empty answer. Please try again.');
 
     bubble.className='bubble';
-    bubble.textContent=answer;
-
-    history.push({role:'assistant',content:answer});
-    $('modeStatus').textContent='● AI connected';
+    bubble.textContent=answer.trim();
+    history.push({role:'assistant',content:answer.trim()});
+    aiConnected=true;
+    lastAIError=false;
+    updateNetworkStatus();
 
   }catch(e){
     bubble.className='bubble';
-    bubble.textContent='AI Connection Error: '+e.message;
-    toast('AI connection failed. Check the error message.');
-    history.pop();
+    let errorMessage=e.message||'Unknown error';
+    if(!navigator.onLine){errorMessage='You appear to be offline. Check your internet connection and try again.';}
+    else if(errorMessage.toLowerCase().includes('failed to fetch')){errorMessage='Could not reach Groq. Check your internet connection, API key, or whether the browser request is blocked.';}
+    bubble.textContent='AI Connection Error: '+errorMessage;
+    toast(errorMessage);
+    if(history.length&&history[history.length-1].role==='user'&&history[history.length-1].content===text){history.pop();}
+    promptBox.value=text;
+    autoSize();
+    aiConnected=false;
+    lastAIError=true;
+    updateNetworkStatus();
 
   }finally{
     sendBtn.disabled=false;
@@ -121,6 +139,7 @@ async function sendMessage(text){
     chat.scrollTop=chat.scrollHeight;
   }
 }
+
 
 sendBtn.addEventListener('click',()=>sendMessage());
 promptBox.addEventListener('input',autoSize);
@@ -138,14 +157,18 @@ $('newChat').addEventListener('click',()=>{
   messages.innerHTML='';
   $('welcome').style.display='block';
   $('sidebar').classList.remove('open');
-  $('modeStatus').textContent='● Preview mode';
+  aiConnected=false;
+  lastAIError=false;
+  updateNetworkStatus();
   promptBox.focus();
   localStorage.removeItem('shadowBornChatV2');
 });
 $('menu').addEventListener('click',()=>
   $('sidebar').classList.toggle('open')
 );
-
+window.addEventListener('online',updateNetworkStatus);
+window.addEventListener('offline',updateNetworkStatus);
+updateNetworkStatus();
 </script>
 
 <script>
@@ -170,14 +193,6 @@ window.addEventListener('appinstalled', () => {
   installButton.hidden = true;
   toast('Shadow Born AI was added to your device.');
 });
-function updateNetworkStatus(){
-  const el=document.getElementById('modeStatus');
-  if(!navigator.onLine){el.textContent='● Offline';el.style.color='#fcd34d';}
-  else {el.textContent='● Preview mode';el.style.color='#c4b5fd';}
-}
-window.addEventListener('online',updateNetworkStatus);
-window.addEventListener('offline',updateNetworkStatus);
-updateNetworkStatus();
 </script>
 
 <script>if ("serviceWorker" in navigator && location.protocol.startsWith("http")) { navigator.serviceWorker.register("./sw.js").catch(()=>{}); }</script>
