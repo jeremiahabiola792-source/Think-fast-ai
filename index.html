@@ -373,7 +373,7 @@ textarea::placeholder {
 
       <div style="display:flex;align-items:center;gap:10px">
         <button class="install" id="installButton" hidden>Install app</button>
-        <div class="status" id="status">● Preview mode</div>
+        <div class="status" id="status">● Ready</div>
       </div>
     </header>
 
@@ -385,6 +385,7 @@ textarea::placeholder {
         <p>Your space to ask boldly, think clearly, and create something new. What shall we explore today?</p>
 
         <div class="suggestions">
+
           <button class="suggestion" data-prompt="Teach me an interesting topic step by step.">
             <strong>📚 Learn something</strong>
             <span>Clear explanations for any topic</span>
@@ -404,6 +405,7 @@ textarea::placeholder {
             <strong>💻 Build with code</strong>
             <span>Learn programming step by step</span>
           </button>
+
         </div>
       </div>
 
@@ -427,12 +429,19 @@ textarea::placeholder {
 <script>
 "use strict";
 
-/*
-  This is the existing Cloudflare Worker address.
-  It does not deploy or update the Worker.
-*/
-const WORKER_URL =
-  "https://shadow-born-ai-api.jeremiahabiola792.workers.dev/api/chat";
+/* =========================================
+   GROQ CONNECTION
+   Paste your Groq API key below.
+   WARNING: This exposes the key to website visitors.
+========================================= */
+
+const GROQ_API_KEY = "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";
+
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+const GROQ_MODEL = "openai/gpt-oss-120b";
+
+/* ========================================= */
 
 const messagesElement = document.getElementById("messages");
 const welcomeElement = document.getElementById("welcome");
@@ -455,39 +464,10 @@ function scrollToBottom() {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-function addMessage(role, content, sources = []) {
+function addMessage(role, content) {
   const bubble = document.createElement("div");
   bubble.className = "message " + role;
   bubble.textContent = content;
-
-  if (role === "assistant" && sources.length) {
-    const sourceBox = document.createElement("div");
-    sourceBox.className = "sources";
-
-    const heading = document.createElement("strong");
-    heading.textContent = "Sources";
-    sourceBox.appendChild(heading);
-
-    sources.forEach(source => {
-      try {
-        const url = new URL(source.url);
-
-        if (!["http:", "https:"].includes(url.protocol)) return;
-
-        const link = document.createElement("a");
-        link.href = url.href;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = source.title || url.hostname;
-
-        sourceBox.appendChild(link);
-      } catch {
-        // Ignore invalid source URLs.
-      }
-    });
-
-    bubble.appendChild(sourceBox);
-  }
 
   messagesElement.appendChild(bubble);
   scrollToBottom();
@@ -511,6 +491,17 @@ async function sendMessage(text) {
 
   if (!text || busy) return;
 
+  if (
+    !GROQ_API_KEY ||
+    GROQ_API_KEY === "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"
+  ) {
+    addMessage(
+      "assistant",
+      "Please add your Groq API key inside the GROQ_API_KEY variable in index.html first."
+    );
+    return;
+  }
+
   welcomeElement.style.display = "none";
 
   addMessage("user", text);
@@ -531,91 +522,114 @@ async function sendMessage(text) {
   input.style.height = "40px";
 
   setBusy(true);
-  setStatus("● Thinking...");
+  setStatus("● Connecting to Groq...");
 
-  const loadingBubble = addMessage("assistant", "Shadow Born AI is thinking...");
+  const loadingBubble = addMessage(
+    "assistant",
+    "Shadow Born AI is thinking..."
+  );
+
+  let controller;
+  let timeout;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    controller = new AbortController();
+    timeout = setTimeout(() => controller.abort(), 60000);
 
-    let response;
+    const response = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `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`
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: "system",
+            content: `You are Shadow Born AI, a helpful, intelligent, friendly AI assistant.
 
-    try {
-      response = await fetch(WORKER_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          messages: outgoingHistory
-        }),
-        signal: controller.signal
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
+Your motto is "Your ideas, unlocked."
 
-    let data;
+Your responsibilities:
+- Answer questions clearly and accurately.
+- Explain difficult topics step by step.
+- Help with education, science, mathematics and technology.
+- Help users write, brainstorm, plan and code.
+- Use simple English when appropriate.
+- Be conversational, thoughtful and helpful.
+- Admit when you don't know something.
+- Never invent facts.
+- Give complete answers when the user needs detailed explanations.`
+          },
+          ...outgoingHistory
+        ],
+        temperature: 0.7,
+        max_tokens: 2048
+      }),
+      signal: controller.signal
+    });
 
-    try {
-      data = await response.json();
-    } catch {
-      throw new Error("The server returned an invalid response.");
-    }
+    const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Server error: " + response.status);
+      const apiError =
+        data?.error?.message ||
+        data?.message ||
+        `Groq request failed (${response.status})`;
+
+      throw new Error(apiError);
     }
 
-    if (!data.reply || typeof data.reply !== "string") {
-      throw new Error("The AI returned an empty response.");
+    const reply = data.choices?.[0]?.message?.content;
+
+    if (!reply || typeof reply !== "string") {
+      throw new Error("Groq returned an empty response.");
     }
 
     loadingBubble.remove();
 
     conversation.push({
       role: "assistant",
-      content: data.reply
+      content: reply
     });
 
-    addMessage("assistant", data.reply, data.sources || []);
+    addMessage("assistant", reply);
 
-    if (data.searchNotice) {
-      setStatus("● " + data.searchNotice, true);
-    } else if (data.searched) {
-      setStatus("● Web search used");
-    } else {
-      setStatus("● Connected");
-    }
+    setStatus("● Connected to Groq");
 
   } catch (error) {
     loadingBubble.remove();
 
     conversation = previousMessages;
 
-    let message = error.message || "Something went wrong.";
+    let errorMessage = error.message || "Unknown connection error.";
 
     if (error.name === "AbortError") {
-      message = "The request took too long. Please try again.";
+      errorMessage = "The request timed out. Please try again.";
     }
 
     addMessage(
       "assistant",
-      "Connection error: " + message
+      "AI connection error: " + errorMessage
     );
 
     setStatus("● Connection error", true);
 
   } finally {
+    clearTimeout(timeout);
     setBusy(false);
     input.focus();
   }
 }
 
+/* SEND BUTTON */
+
 sendButton.addEventListener("click", () => {
   sendMessage(input.value);
 });
+
+/* ENTER TO SEND */
 
 input.addEventListener("keydown", event => {
   if (event.key === "Enter" && !event.shiftKey) {
@@ -624,16 +638,22 @@ input.addEventListener("keydown", event => {
   }
 });
 
+/* TEXTAREA AUTO-RESIZE */
+
 input.addEventListener("input", () => {
   input.style.height = "40px";
   input.style.height = Math.min(input.scrollHeight, 130) + "px";
 });
+
+/* SUGGESTION BUTTONS */
 
 document.querySelectorAll(".suggestion").forEach(button => {
   button.addEventListener("click", () => {
     sendMessage(button.dataset.prompt);
   });
 });
+
+/* NEW CONVERSATION */
 
 document.getElementById("newChat").addEventListener("click", () => {
   if (busy) return;
@@ -642,11 +662,13 @@ document.getElementById("newChat").addEventListener("click", () => {
   messagesElement.innerHTML = "";
 
   showWelcome();
-  setStatus("● Preview mode");
+  setStatus("● Ready");
 
   sidebar.classList.remove("open");
   input.focus();
 });
+
+/* MOBILE MENU */
 
 document.getElementById("menuButton").addEventListener("click", () => {
   sidebar.classList.toggle("open");
@@ -663,14 +685,13 @@ document.addEventListener("click", event => {
   }
 });
 
-/* PWA installation */
+/* PWA INSTALLATION */
 
 window.addEventListener("beforeinstallprompt", event => {
   event.preventDefault();
   installPrompt = event;
 
-  const installButton = document.getElementById("installButton");
-  installButton.hidden = false;
+  document.getElementById("installButton").hidden = false;
 });
 
 document.getElementById("installButton").addEventListener("click", async () => {
@@ -689,7 +710,7 @@ window.addEventListener("appinstalled", () => {
   setStatus("● App installed");
 });
 
-/* Service worker registration */
+/* SERVICE WORKER */
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   window.addEventListener("load", () => {
